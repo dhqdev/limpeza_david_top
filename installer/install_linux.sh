@@ -13,13 +13,13 @@
 # - Cria atalho funcional na Área de Trabalho
 #
 # USO:
-# curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_linux.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david_top/main/installer/install_linux.sh | bash
 # ============================================================================
 
 set -e
 
 # === CONFIGURAÇÕES ===
-REPO_URL="https://github.com/dhqdev/limpeza_david.git"
+REPO_URL="https://github.com/dhqdev/limpeza_david_top.git"
 APP_NAME="limpeza_david"
 INSTALL_DIR="$HOME/.local/share/limpeza_david"
 BIN_DIR="$HOME/.local/bin"
