@@ -514,19 +514,21 @@ class LinuxCleaner:
             
         return files, total_size
         
-    def clean_files(self, files: List[str]) -> Tuple[int, int, int]:
+    def clean_files(self, files: List[str], on_file_removed=None) -> Tuple[int, int, int, List[str]]:
         """
         Remove os arquivos da lista.
         
         Args:
             files: Lista de caminhos de arquivos
+            on_file_removed: Callback opcional chamado quando arquivo é removido
             
         Returns:
-            Tupla com (arquivos removidos, tamanho liberado, erros)
+            Tupla com (arquivos removidos, tamanho liberado, erros, lista de erros)
         """
         removed = 0
         size_freed = 0
         errors = 0
+        error_files = []
         
         for file_path in files:
             try:
@@ -538,6 +540,7 @@ class LinuxCleaner:
                 if not self._is_safe_to_delete(path):
                     self.logger.warning(f"Arquivo protegido ignorado: {file_path}")
                     errors += 1
+                    error_files.append(file_path)
                     continue
                     
                 size = get_file_size(path)
@@ -551,14 +554,19 @@ class LinuxCleaner:
                     removed += 1
                     size_freed += size
                     self.logger.debug(f"Removido: {file_path}")
+                    # Chamar callback se fornecido
+                    if on_file_removed:
+                        on_file_removed(file_path, size)
                 else:
                     errors += 1
+                    error_files.append(file_path)
                     
             except Exception as e:
                 self.logger.error(f"Erro ao remover {file_path}: {e}")
                 errors += 1
+                error_files.append(file_path)
                 
-        return removed, size_freed, errors
+        return removed, size_freed, errors, error_files
         
     def clean_apt_cache(self) -> bool:
         """

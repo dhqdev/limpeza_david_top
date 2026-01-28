@@ -262,8 +262,13 @@ def clean_thread():
             app_state['current_task'] = f"Limpando: {cat_name}"
             add_log(f'🧹 Limpando: {cat_name}...', 'info')
             
-            # Remove os arquivos
-            removed, size_freed, errors = cleaner.clean_files(files)
+            # Remove os arquivos com callback para log detalhado
+            def log_removed_file(filepath, size):
+                # Mostrar apenas o nome do arquivo, não caminho completo
+                filename = os.path.basename(filepath)
+                add_log(f'  ✓ {filename} ({format_size(size)})', 'file')
+            
+            removed, size_freed, errors, error_files = cleaner.clean_files(files, log_removed_file)
             
             total_removed += removed
             total_size_freed += size_freed
@@ -272,6 +277,8 @@ def clean_thread():
             add_log(f'  └─ {removed} removidos ({format_size(size_freed)})', 'success')
             if errors > 0:
                 add_log(f'  └─ {errors} erros (arquivos em uso)', 'warning')
+                for err_file in error_files[:3]:  # Mostra no máximo 3 erros
+                    add_log(f'    ✗ {os.path.basename(err_file)}', 'error')
         
         add_log('', 'info')
         add_log('═' * 40, 'header')

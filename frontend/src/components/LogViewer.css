@@ -46,3 +46,18 @@
   color: #c084fc;
   font-weight: 600;
 }
+
+.log-file {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  padding-left: 20px;
+  opacity: 0.9;
+  border-left: 2px solid rgba(34, 197, 94, 0.3);
+  margin-left: 8px;
+  animation: fileAppear 0.3s ease-out;
+}
+
+@keyframes fileAppear {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 0.9; transform: translateX(0); }
+}

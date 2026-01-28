@@ -7,7 +7,8 @@ function LogViewer({ logs }) {
       success: 'log-success',
       warning: 'log-warning',
       error: 'log-error',
-      header: 'log-header'
+      header: 'log-header',
+      file: 'log-file'
     }
     return classes[level] || 'log-info'
   }
