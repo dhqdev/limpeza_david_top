@@ -10,7 +10,7 @@
 # - Cria atalho na Área de Trabalho
 #
 # Uso:
-#   curl -fsSL https://raw.githubusercontent.com/SEU_USUARIO/limpeza_david/main/installer/install_linux.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_linux.sh | bash
 #
 # Autor: David Fernandes
 # Versão: 1.0.0
@@ -18,7 +18,7 @@
 set -e
 
 # === CONFIGURAÇÕES ===
-REPO_URL="https://github.com/SEU_USUARIO/limpeza_david.git"
+REPO_URL="https://github.com/dhqdev/limpeza_david.git"
 APP_NAME="Limpeza David"
 INSTALL_DIR="$HOME/.local/share/limpeza_david"
 BIN_DIR="$HOME/.local/bin"

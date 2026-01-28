@@ -15,7 +15,7 @@
     Versão: 1.0.0
     
 .EXAMPLE
-    irm https://raw.githubusercontent.com/SEU_USUARIO/limpeza_david/main/installer/install_windows.ps1 | iex
+    irm https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_windows.ps1 | iex
 #>
 
 # Configurações
@@ -23,7 +23,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 # Variáveis do projeto
-$REPO_URL = "https://github.com/SEU_USUARIO/limpeza_david.git"
+$REPO_URL = "https://github.com/dhqdev/limpeza_david.git"
 $APP_NAME = "Limpeza David"
 $INSTALL_DIR = "$env:LOCALAPPDATA\limpeza_david"
 $DESKTOP_PATH = [Environment]::GetFolderPath("Desktop")
