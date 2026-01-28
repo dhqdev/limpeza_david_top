@@ -28,7 +28,11 @@ Com apenas um comando, você pode instalar e executar a ferramenta em qualquer m
 ## ✨ Características
 
 - 🖥️ **Cross-platform**: Funciona no Windows 10+ e distribuições Linux baseadas em Debian/Ubuntu, Fedora, Arch, etc.
-- 🎨 **Interface gráfica moderna**: GUI intuitiva com Tkinter
+- 🎨 **Interface gráfica moderna**: 
+  - **Desktop (Tkinter)**: Interface tradicional
+  - **Web (React)**: Interface moderna com animações
+- 🧹 **Animação de limpeza**: Vassourinha animada varrendo durante a limpeza
+- 🔄 **Atualização fácil**: Botão de atualização com git pull integrado
 - 🔒 **Seguro**: Nunca apaga arquivos críticos do sistema
 - 📊 **Transparente**: Mostra exatamente o que será apagado antes de executar
 - 📝 **Logs detalhados**: Registro completo de todas as operações
@@ -59,6 +63,34 @@ curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer
 
 ---
 
+## 🌐 Interface Web (React) - NOVO!
+
+A nova interface web traz uma experiência moderna com animações!
+
+### Setup Rápido
+```bash
+# Execute o script de setup
+chmod +x setup.sh
+./setup.sh
+```
+
+### Executar Interface Web
+```bash
+source venv/bin/activate
+python3 run_web.py
+```
+
+O navegador abrirá automaticamente em `http://localhost:5000`
+
+### Recursos da Interface Web
+- 🎨 Design moderno e responsivo
+- 🧹 **Animação de vassourinha** durante a limpeza (com sua foto!)
+- 🔄 **Botão de atualização** - Clique para fazer git pull
+- 📊 Barra de progresso animada com partículas de sujeira
+- 📋 Log de operações em tempo real
+
+---
+
 ## 📦 Instalação Manual Completa
 
 Se preferir instalar manualmente, siga os passos abaixo:
@@ -68,16 +100,20 @@ Se preferir instalar manualmente, siga os passos abaixo:
 ```bash
 # 1. Atualizar sistema e instalar dependências
 sudo apt update
-sudo apt install -y git python3 python3-pip python3-tk
+sudo apt install -y git python3 python3-pip python3-tk nodejs npm
 
 # 2. Clonar o repositório
 git clone https://github.com/SEU_USUARIO/limpeza_david.git
 cd limpeza_david
 
-# 3. (Opcional) Instalar dependências extras
+# 3. Instalar dependências
 pip3 install -r requirements.txt
 
-# 4. Executar o programa
+# 4. Para interface web, executar setup
+chmod +x setup.sh
+./setup.sh
+
+# 5. Executar o programa
 python3 run.py
 ```
 

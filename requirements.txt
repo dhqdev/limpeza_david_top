@@ -4,6 +4,10 @@
 # GUI
 # tkinter já vem com Python (não precisa instalar via pip)
 
+# API REST (para frontend React)
+flask>=3.0.0
+flask-cors>=4.0.0
+
 # Empacotamento (opcional - para criar executável)
 pyinstaller>=6.0.0
 
