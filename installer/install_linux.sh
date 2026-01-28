@@ -328,9 +328,9 @@ create_launcher_script() {
     # Cria o script de lançamento
     cat > "$SCRIPT_PATH" << EOF
 #!/bin/bash
-# Lançador do Limpeza David
+# Lançador do Limpeza David (Interface Web)
 cd "$INSTALL_DIR"
-exec $PYTHON_CMD "$INSTALL_DIR/run.py" "\$@"
+exec $PYTHON_CMD "$INSTALL_DIR/run_web.py" "\$@"
 EOF
     
     chmod +x "$SCRIPT_PATH"
@@ -380,7 +380,7 @@ Type=Application
 Name=Limpeza David
 GenericName=Limpador de Sistema
 Comment=Ferramenta de limpeza de sistema - Remove arquivos temporários, cache e lixo
-Exec=$PYTHON_CMD $INSTALL_DIR/run.py
+Exec=$PYTHON_CMD $INSTALL_DIR/run_web.py
 Icon=$ICON_PATH
 Terminal=false
 Categories=Utility;System;
@@ -425,8 +425,8 @@ verify_installation() {
     fi
     
     # Verifica se o arquivo principal existe
-    if [[ ! -f "$INSTALL_DIR/run.py" ]]; then
-        log_error "Arquivo principal (run.py) não encontrado"
+    if [[ ! -f "$INSTALL_DIR/run_web.py" ]]; then
+        log_error "Arquivo principal (run_web.py) não encontrado"
         ((ERRORS++))
     fi
     
@@ -442,10 +442,9 @@ verify_installation() {
         ((ERRORS++))
     fi
     
-    # Tenta executar uma verificação rápida do Python
-    if ! $PYTHON_CMD -c "import tkinter" &> /dev/null; then
-        log_error "Tkinter não está funcionando corretamente"
-        ((ERRORS++))
+    # Verifica se Flask está instalado (necessário para interface web)
+    if ! $PYTHON_CMD -c "import flask" &> /dev/null; then
+        log_warning "Flask pode não estar instalado corretamente"
     fi
     
     if [[ $ERRORS -eq 0 ]]; then
@@ -471,7 +470,7 @@ main() {
     check_and_install_git
     check_and_install_python
     check_and_install_pip
-    check_and_install_tkinter
+    # Tkinter não é necessário para a interface web
     
     # Clona o repositório
     clone_repository
@@ -496,10 +495,10 @@ main() {
     echo -e "${GREEN}║                                                       ║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${CYAN}Para executar o Limpeza David:${NC}"
+    echo -e "${CYAN}Para executar o Limpeza David (Interface Web):${NC}"
     echo -e "  ${BOLD}1.${NC} Clique no atalho '${BOLD}Limpeza David${NC}' na área de trabalho"
     echo -e "  ${BOLD}2.${NC} Ou execute no terminal: ${BOLD}limpeza-david${NC}"
-    echo -e "  ${BOLD}3.${NC} Ou execute: ${BOLD}$PYTHON_CMD $INSTALL_DIR/run.py${NC}"
+    echo -e "  ${BOLD}3.${NC} Ou execute: ${BOLD}$PYTHON_CMD $INSTALL_DIR/run_web.py${NC}"
     echo ""
     echo -e "${YELLOW}⚠️  Se o atalho não funcionar na primeira vez:${NC}"
     echo -e "    Clique com botão direito > Permitir execução"
@@ -510,9 +509,9 @@ main() {
     read -p "Deseja executar o Limpeza David agora? (s/N) " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Ss]$ ]]; then
-        log_info "Iniciando Limpeza David..."
+        log_info "Iniciando Limpeza David (Interface Web)..."
         cd "$INSTALL_DIR"
-        $PYTHON_CMD "$INSTALL_DIR/run.py" &
+        $PYTHON_CMD "$INSTALL_DIR/run_web.py" &
         disown
     fi
 }
