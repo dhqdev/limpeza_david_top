@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Trash2, Search, CheckSquare, XSquare, Monitor } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { RefreshCw, Trash2, Search, CheckSquare, XSquare } from 'lucide-react'
 import ProgressBar from './components/ProgressBar'
-import LogViewer from './components/LogViewer'
 import CategorySelector from './components/CategorySelector'
 import './App.css'
 
@@ -20,13 +19,11 @@ function App() {
   })
   const [scanResults, setScanResults] = useState(null)
 
-  // Carrega informações iniciais
   useEffect(() => {
     fetchSystemInfo()
     fetchCategories()
   }, [])
 
-  // Poll do estado
   useEffect(() => {
     const interval = setInterval(() => {
       if (state.is_scanning || state.is_cleaning || state.is_updating) {
@@ -42,7 +39,7 @@ function App() {
       const data = await res.json()
       setSystemInfo(data)
     } catch (error) {
-      console.error('Erro ao buscar info do sistema:', error)
+      console.error('Erro:', error)
     }
   }
 
@@ -53,7 +50,7 @@ function App() {
       setCategories(data)
       setSelectedCategories(Object.keys(data))
     } catch (error) {
-      console.error('Erro ao buscar categorias:', error)
+      console.error('Erro:', error)
     }
   }
 
@@ -62,13 +59,9 @@ function App() {
       const res = await fetch('/api/state')
       const data = await res.json()
       setState(data)
-      
-      // Se terminou o scan, busca resultados
-      if (data.status === 'scan_complete') {
-        fetchScanResults()
-      }
+      if (data.status === 'scan_complete') fetchScanResults()
     } catch (error) {
-      console.error('Erro ao buscar estado:', error)
+      console.error('Erro:', error)
     }
   }
 
@@ -78,7 +71,7 @@ function App() {
       const data = await res.json()
       setScanResults(data)
     } catch (error) {
-      console.error('Erro ao buscar resultados:', error)
+      console.error('Erro:', error)
     }
   }
 
@@ -87,7 +80,6 @@ function App() {
       alert('Selecione pelo menos uma categoria!')
       return
     }
-
     try {
       setScanResults(null)
       const res = await fetch('/api/scan', {
@@ -95,65 +87,41 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ categories: selectedCategories })
       })
-      
-      if (res.ok) {
-        setState(prev => ({ ...prev, is_scanning: true, status: 'scanning' }))
-      }
+      if (res.ok) setState(prev => ({ ...prev, is_scanning: true, status: 'scanning' }))
     } catch (error) {
-      console.error('Erro ao iniciar scan:', error)
+      console.error('Erro:', error)
     }
   }
 
   const handleClean = async () => {
     if (!scanResults || scanResults.total_files === 0) return
-
-    const confirm = window.confirm(
-      `Deseja remover ${scanResults.total_files} arquivos?\n` +
-      `Espaço a ser liberado: ${scanResults.total_size_formatted}\n\n` +
-      `⚠️ Esta ação não pode ser desfeita!`
-    )
-
-    if (!confirm) return
-
+    if (!window.confirm(`Remover ${scanResults.total_files} arquivos?\nLiberar: ${scanResults.total_size_formatted}`)) return
     try {
       const res = await fetch('/api/clean', { method: 'POST' })
-      
       if (res.ok) {
         setState(prev => ({ ...prev, is_cleaning: true, status: 'cleaning' }))
         setScanResults(null)
       }
     } catch (error) {
-      console.error('Erro ao iniciar limpeza:', error)
+      console.error('Erro:', error)
     }
   }
 
   const handleUpdate = async () => {
-    const confirm = window.confirm(
-      'Deseja verificar atualizações?\n\n' +
-      'Isso irá executar "git pull" para baixar as últimas mudanças.'
-    )
-
-    if (!confirm) return
-
+    if (!window.confirm('Verificar atualizações?')) return
     try {
       const res = await fetch('/api/update', { method: 'POST' })
-      
-      if (res.ok) {
-        setState(prev => ({ ...prev, is_updating: true, status: 'updating' }))
-      }
+      if (res.ok) setState(prev => ({ ...prev, is_updating: true, status: 'updating' }))
     } catch (error) {
-      console.error('Erro ao iniciar atualização:', error)
+      console.error('Erro:', error)
     }
   }
 
   const selectAll = () => setSelectedCategories(Object.keys(categories))
   const deselectAll = () => setSelectedCategories([])
-
   const toggleCategory = (catId) => {
     setSelectedCategories(prev => 
-      prev.includes(catId) 
-        ? prev.filter(id => id !== catId)
-        : [...prev, catId]
+      prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
     )
   }
 
@@ -161,33 +129,32 @@ function App() {
 
   return (
     <div className="app">
-      {/* Header */}
+      {/* Header compacto */}
       <header className="header">
         <div className="header-left">
           <img src="/img/icon.png" alt="Logo" className="logo" />
-          <h1>Limpeza David</h1>
+          <div>
+            <h1>Limpeza David</h1>
+            <span className="subtitle">{systemInfo.system} {systemInfo.release}</span>
+          </div>
         </div>
-        <div className="header-right">
-          <Monitor size={18} />
-          <span>{systemInfo.system} {systemInfo.release}</span>
-          <span className="version">v{systemInfo.version}</span>
-        </div>
+        <button onClick={handleUpdate} className="btn-update" disabled={isWorking}>
+          <RefreshCw size={18} className={state.is_updating ? 'spin' : ''} />
+        </button>
       </header>
 
-      {/* Main Content */}
+      {/* Conteúdo principal - Layout em grid */}
       <main className="main-content">
-        {/* Categories Section */}
-        <section className="card categories-section">
-          <div className="card-header">
-            <h2>📂 Categorias de Limpeza</h2>
-            <div className="category-actions">
-              <button onClick={selectAll} className="btn-small" disabled={isWorking}>
+        {/* Lado esquerdo - Categorias */}
+        <section className="panel categories-panel">
+          <div className="panel-header">
+            <h2>Categorias</h2>
+            <div className="quick-actions">
+              <button onClick={selectAll} disabled={isWorking} title="Selecionar todos">
                 <CheckSquare size={16} />
-                Selecionar Todos
               </button>
-              <button onClick={deselectAll} className="btn-small" disabled={isWorking}>
+              <button onClick={deselectAll} disabled={isWorking} title="Desmarcar todos">
                 <XSquare size={16} />
-                Desmarcar Todos
               </button>
             </div>
           </div>
@@ -199,81 +166,64 @@ function App() {
           />
         </section>
 
-        {/* Action Buttons */}
-        <section className="actions-section">
-          <button 
-            onClick={handleScan} 
-            className="btn btn-primary"
-            disabled={isWorking || selectedCategories.length === 0}
-          >
-            <Search size={20} />
-            Analisar Sistema
-          </button>
+        {/* Lado direito - Ações e Progresso */}
+        <section className="panel action-panel">
+          {/* Barra de progresso com animação */}
+          <div className="progress-area">
+            <ProgressBar 
+              progress={state.progress} 
+              isActive={state.is_scanning || state.is_cleaning}
+              status={state.current_task || state.status}
+            />
+          </div>
 
-          <button 
-            onClick={handleClean} 
-            className="btn btn-danger"
-            disabled={isWorking || !scanResults || scanResults.total_files === 0}
-          >
-            <Trash2 size={20} />
-            Limpar Selecionados
-          </button>
-
-          <button 
-            onClick={handleUpdate} 
-            className="btn btn-secondary"
-            disabled={isWorking}
-          >
-            <RefreshCw size={20} className={state.is_updating ? 'spin' : ''} />
-            Atualizar App
-          </button>
-        </section>
-
-        {/* Progress Section */}
-        <section className="card progress-section">
-          <ProgressBar 
-            progress={state.progress} 
-            isActive={state.is_scanning || state.is_cleaning}
-            status={state.current_task || state.status}
-          />
-        </section>
-
-        {/* Results Summary */}
-        {scanResults && scanResults.total_files > 0 && (
-          <section className="card results-section">
-            <h3>📊 Resultado da Análise</h3>
-            <div className="results-summary">
-              <div className="result-item">
-                <span className="result-label">Total de Arquivos:</span>
-                <span className="result-value">{scanResults.total_files}</span>
+          {/* Resultado */}
+          {scanResults && scanResults.total_files > 0 && (
+            <div className="results-box">
+              <div className="result-stat">
+                <span className="stat-number">{scanResults.total_files}</span>
+                <span className="stat-label">arquivos</span>
               </div>
-              <div className="result-item highlight">
-                <span className="result-label">Espaço a Liberar:</span>
-                <span className="result-value">{scanResults.total_size_formatted}</span>
+              <div className="result-stat highlight">
+                <span className="stat-number">{scanResults.total_size_formatted}</span>
+                <span className="stat-label">a liberar</span>
               </div>
             </div>
-            <div className="results-details">
-              {Object.entries(scanResults.results).map(([catId, data]) => (
-                <div key={catId} className="result-category">
-                  <span>{data.name}</span>
-                  <span>{data.file_count} arquivos ({data.size_formatted})</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+          )}
 
-        {/* Log Section */}
-        <section className="card log-section">
-          <h3>📋 Log de Operações</h3>
-          <LogViewer logs={state.logs} />
+          {/* Status */}
+          {state.status !== 'idle' && (
+            <div className="status-text">
+              {state.status === 'scan_complete' && '✅ Análise concluída!'}
+              {state.status === 'clean_complete' && '✅ Limpeza concluída!'}
+              {state.status === 'scanning' && '🔍 Analisando...'}
+              {state.status === 'cleaning' && '🧹 Limpando...'}
+              {state.status === 'updating' && '🔄 Atualizando...'}
+            </div>
+          )}
+
+          {/* Botões de ação */}
+          <div className="action-buttons">
+            <button 
+              onClick={handleScan} 
+              className="btn btn-primary"
+              disabled={isWorking || selectedCategories.length === 0}
+            >
+              <Search size={20} />
+              Analisar
+            </button>
+
+            <button 
+              onClick={handleClean} 
+              className="btn btn-danger"
+              disabled={isWorking || !scanResults || scanResults.total_files === 0}
+            >
+              <Trash2 size={20} />
+              Limpar
+            </button>
+          </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="footer">
-        <span>© 2024 David Fernandes - Limpeza David</span>
-      </footer>
     </div>
   )
 }

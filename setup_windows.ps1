@@ -1,172 +1,211 @@
-# ===========================================
-# Limpeza David TOP - Instalador Windows
-# ===========================================
-
-param(
-    [switch]$Silent = $false
-)
-
-$ErrorActionPreference = "Stop"
+# ═══════════════════════════════════════════════════════════════
+# 🧹 LIMPEZA DAVID TOP - INSTALADOR COMPLETO PARA WINDOWS
+# ═══════════════════════════════════════════════════════════════
+# Instala TUDO automaticamente, mesmo em máquinas sem programação
+# Execute como Administrador no PowerShell
+# ═══════════════════════════════════════════════════════════════
 
 # Cores
+$Host.UI.RawUI.WindowTitle = "Instalador - Limpeza David Top"
+
 function Write-Color {
     param([string]$Text, [string]$Color = "White")
     Write-Host $Text -ForegroundColor $Color
 }
 
-Clear-Host
-Write-Color "`n╔══════════════════════════════════════════════════════╗" "Magenta"
-Write-Color "║                                                      ║" "Magenta"
-Write-Color "║        🧹 LIMPEZA DAVID TOP - INSTALADOR            ║" "Magenta"
-Write-Color "║                                                      ║" "Magenta"
-Write-Color "╚══════════════════════════════════════════════════════╝`n" "Magenta"
+function Write-Banner {
+    Clear-Host
+    Write-Color @"
 
-# Diretórios
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🧹  LIMPEZA DAVID TOP - INSTALADOR AUTOMÁTICO          ║
+║                                                           ║
+║   Instala TUDO que você precisa, mesmo em máquinas       ║
+║   que não têm nada de programação instalado!             ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+"@ "Magenta"
+}
+
+Write-Banner
+
+# Verificar se é administrador
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Color "[ERRO] Execute este script como Administrador!" "Red"
+    Write-Color "Clique direito no PowerShell > 'Executar como administrador'" "Yellow"
+    pause
+    exit 1
+}
+
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $InstallDir = "$env:LOCALAPPDATA\LimpezaDavid"
-$DesktopPath = [Environment]::GetFolderPath("Desktop")
-$StartMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
 
-# Funções auxiliares
-function Test-CommandExists {
-    param([string]$Command)
-    $null -ne (Get-Command $Command -ErrorAction SilentlyContinue)
-}
+# ══════════════════════════════════════════════════════════
+# ETAPA 1: INSTALAR CHOCOLATEY (gerenciador de pacotes)
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[1/7] 📦 Verificando Chocolatey..." "Cyan"
 
-function Install-Chocolatey {
-    if (-not (Test-CommandExists "choco")) {
-        Write-Color "  Instalando Chocolatey..." "Yellow"
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    }
-}
-
-# [1/6] Verificar dependências
-Write-Color "[1/6] Verificando dependências..." "Yellow"
-
-# Python
-if (Test-CommandExists "python") {
-    Write-Color "  ✓ Python" "Green"
-} else {
-    Write-Color "  Instalando Python..." "Yellow"
-    Install-Chocolatey
-    choco install python -y --no-progress
+if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+    Write-Color "  Instalando Chocolatey (gerenciador de pacotes)..." "Yellow"
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+    
+    # Atualizar PATH
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-}
-
-# Node.js
-if (Test-CommandExists "node") {
-    Write-Color "  ✓ Node.js" "Green"
+    Write-Color "  [OK] Chocolatey instalado" "Green"
 } else {
-    Write-Color "  Instalando Node.js..." "Yellow"
-    Install-Chocolatey
-    choco install nodejs -y --no-progress
+    Write-Color "  [OK] Chocolatey já instalado" "Green"
+}
+
+# ══════════════════════════════════════════════════════════
+# ETAPA 2: INSTALAR GIT
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[2/7] 📦 Verificando Git..." "Cyan"
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Color "  Instalando Git..." "Yellow"
+    choco install git -y --no-progress
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    Write-Color "  [OK] Git instalado" "Green"
+} else {
+    Write-Color "  [OK] Git já instalado" "Green"
 }
 
-# Git
-if (Test-CommandExists "git") {
-    Write-Color "  ✓ Git" "Green"
+# ══════════════════════════════════════════════════════════
+# ETAPA 3: INSTALAR PYTHON
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[3/7] 🐍 Verificando Python..." "Cyan"
+
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    Write-Color "  Instalando Python 3.12..." "Yellow"
+    choco install python312 -y --no-progress
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    Write-Color "  [OK] Python instalado" "Green"
+} else {
+    Write-Color "  [OK] Python já instalado" "Green"
 }
 
-# [2/6] Copiar arquivos
-Write-Color "`n[2/6] Copiando arquivos para $InstallDir..." "Yellow"
+# ══════════════════════════════════════════════════════════
+# ETAPA 4: INSTALAR NODE.JS
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[4/7] ⚛️ Verificando Node.js..." "Cyan"
+
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    Write-Color "  Instalando Node.js 20 LTS..." "Yellow"
+    choco install nodejs-lts -y --no-progress
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    Write-Color "  [OK] Node.js instalado" "Green"
+} else {
+    Write-Color "  [OK] Node.js já instalado" "Green"
+}
+
+# ══════════════════════════════════════════════════════════
+# ETAPA 5: COPIAR ARQUIVOS
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[5/7] 📁 Copiando arquivos..." "Cyan"
 
 if (Test-Path $InstallDir) {
-    Remove-Item -Recurse -Force $InstallDir
+    Remove-Item -Path $InstallDir -Recurse -Force
 }
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Copy-Item -Recurse -Force "$ScriptDir\*" $InstallDir
 
+New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+Copy-Item -Path "$ScriptDir\*" -Destination $InstallDir -Recurse -Force
 Set-Location $InstallDir
 
-# [3/6] Ambiente Python
-Write-Color "`n[3/6] Configurando ambiente Python..." "Yellow"
+Write-Color "  [OK] Arquivos copiados para $InstallDir" "Green"
 
+# ══════════════════════════════════════════════════════════
+# ETAPA 6: CONFIGURAR AMBIENTE PYTHON
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[6/7] 🐍 Configurando ambiente Python..." "Cyan"
+
+# Recarregar PATH após instalações
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+# Criar venv
 python -m venv venv
-& ".\venv\Scripts\Activate.ps1"
+
+# Ativar venv e instalar dependências
+& "$InstallDir\venv\Scripts\Activate.ps1"
 python -m pip install --upgrade pip -q
 pip install flask flask-cors -q
 
-Write-Color "  ✓ Flask instalado" "Green"
+Write-Color "  [OK] Flask instalado" "Green"
 
-# [4/6] Frontend
-Write-Color "`n[4/6] Instalando frontend React..." "Yellow"
-
-Set-Location frontend
+# Compilar frontend
+Write-Color "`n  Compilando frontend React..." "Yellow"
+Set-Location "$InstallDir\frontend"
 npm install --silent 2>$null
 npm run build --silent 2>$null
-Set-Location ..
+Set-Location $InstallDir
 
-Write-Color "  ✓ Frontend compilado" "Green"
+Write-Color "  [OK] Frontend compilado" "Green"
 
-# [5/6] Script de execução
-Write-Color "`n[5/6] Criando script de execução..." "Yellow"
+# ══════════════════════════════════════════════════════════
+# ETAPA 7: CRIAR ATALHOS
+# ══════════════════════════════════════════════════════════
+Write-Color "`n[7/7] 🖥️ Criando atalhos..." "Cyan"
 
+# Script de inicialização
 $StartScript = @"
 @echo off
-cd /d "%~dp0"
+cd /d "$InstallDir"
 call venv\Scripts\activate.bat
 python run_web.py
 "@
-
 Set-Content -Path "$InstallDir\start.bat" -Value $StartScript
 
-# Script PowerShell oculto (para atalho sem janela do CMD)
-$StartScriptPS = @"
-Set-Location `"$InstallDir`"
-& `".\venv\Scripts\Activate.ps1`"
-python run_web.py
-"@
-
-Set-Content -Path "$InstallDir\start.ps1" -Value $StartScriptPS
-
-# [6/6] Atalho na área de trabalho
-Write-Color "`n[6/6] Criando atalho na área de trabalho..." "Yellow"
-
+# Criar atalho na área de trabalho
 $WshShell = New-Object -ComObject WScript.Shell
-
-# Atalho Desktop
+$DesktopPath = [System.Environment]::GetFolderPath('Desktop')
 $Shortcut = $WshShell.CreateShortcut("$DesktopPath\Limpeza David.lnk")
-$Shortcut.TargetPath = "powershell.exe"
-$Shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$InstallDir\start.ps1`""
+$Shortcut.TargetPath = "$InstallDir\start.bat"
 $Shortcut.WorkingDirectory = $InstallDir
-$Shortcut.IconLocation = "$InstallDir\assets\icon.ico,0"
+$Shortcut.IconLocation = "$InstallDir\assets\icon.ico"
 $Shortcut.Description = "Ferramenta de Limpeza de Sistema"
+$Shortcut.WindowStyle = 7  # Minimizado
 $Shortcut.Save()
 
-Write-Color "  ✓ Atalho criado: Desktop" "Green"
+Write-Color "  [OK] Atalho criado na área de trabalho" "Green"
 
-# Atalho Menu Iniciar
-$Shortcut = $WshShell.CreateShortcut("$StartMenuPath\Limpeza David.lnk")
-$Shortcut.TargetPath = "powershell.exe"
-$Shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$InstallDir\start.ps1`""
-$Shortcut.WorkingDirectory = $InstallDir
-$Shortcut.IconLocation = "$InstallDir\assets\icon.ico,0"
-$Shortcut.Description = "Ferramenta de Limpeza de Sistema"
-$Shortcut.Save()
+# Criar atalho no Menu Iniciar
+$StartMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+$StartMenuShortcut = $WshShell.CreateShortcut("$StartMenuPath\Limpeza David.lnk")
+$StartMenuShortcut.TargetPath = "$InstallDir\start.bat"
+$StartMenuShortcut.WorkingDirectory = $InstallDir
+$StartMenuShortcut.IconLocation = "$InstallDir\assets\icon.ico"
+$StartMenuShortcut.Description = "Ferramenta de Limpeza de Sistema"
+$StartMenuShortcut.WindowStyle = 7
+$StartMenuShortcut.Save()
 
-Write-Color "  ✓ Atalho criado: Menu Iniciar" "Green"
+Write-Color "  [OK] Adicionado ao Menu Iniciar" "Green"
 
-# Finalização
-Write-Color "`n╔══════════════════════════════════════════════════════╗" "Green"
-Write-Color "║                                                      ║" "Green"
-Write-Color "║     ✅ INSTALAÇÃO CONCLUÍDA COM SUCESSO!            ║" "Green"
-Write-Color "║                                                      ║" "Green"
-Write-Color "╚══════════════════════════════════════════════════════╝" "Green"
+# ══════════════════════════════════════════════════════════
+# FINALIZAÇÃO
+# ══════════════════════════════════════════════════════════
+Write-Color @"
 
-Write-Color "`n  Para usar o Limpeza David:" "Cyan"
-Write-Color ""
-Write-Color "  ➜ Clique duas vezes no ícone `"Limpeza David`"" "White"
-Write-Color "    na sua área de trabalho!" "Gray"
-Write-Color ""
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ✅  INSTALAÇÃO CONCLUÍDA COM SUCESSO!                  ║
+║                                                           ║
+║   🖥️  Um ícone "Limpeza David" foi criado na sua         ║
+║       área de trabalho. Clique duas vezes para abrir!    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
 
-if (-not $Silent) {
-    $response = Read-Host "Deseja abrir o Limpeza David agora? [S/n]"
-    if ($response -eq "" -or $response -match "^[Ss]") {
-        Write-Color "`n🚀 Iniciando Limpeza David...`n" "Green"
-        Start-Process "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$InstallDir\start.ps1`""
-    }
+"@ "Green"
+
+Write-Color "  Dica: Você também pode encontrar no Menu Iniciar!" "Yellow"
+Write-Host ""
+
+$response = Read-Host "Deseja abrir o Limpeza David agora? [S/n]"
+if ($response -eq "" -or $response -match "^[Ss]") {
+    Write-Color "`n🚀 Iniciando..." "Green"
+    Start-Process "$InstallDir\start.bat" -WindowStyle Hidden
 }

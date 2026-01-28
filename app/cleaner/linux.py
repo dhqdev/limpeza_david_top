@@ -71,49 +71,54 @@ class LinuxCleaner:
         """
         return {
             'tmp': {
-                'name': 'Arquivos Temporários (/tmp)',
+                'name': 'Temp (/tmp)',
                 'icon': '📁',
                 'description': 'Arquivos temporários do sistema'
             },
-            'var_tmp': {
-                'name': 'Arquivos Temporários (/var/tmp)',
-                'icon': '📂',
-                'description': 'Arquivos temporários persistentes'
-            },
             'user_cache': {
-                'name': 'Cache do Usuário',
+                'name': 'Cache Usuário',
                 'icon': '💾',
                 'description': 'Cache em ~/.cache'
             },
             'browser_cache': {
-                'name': 'Cache de Navegadores',
+                'name': 'Navegadores',
                 'icon': '🌐',
                 'description': 'Cache do Chrome, Firefox, etc.'
             },
             'thumbnails': {
-                'name': 'Thumbnails',
+                'name': 'Miniaturas',
                 'icon': '🖼️',
                 'description': 'Cache de miniaturas de imagens'
-            },
-            'old_logs': {
-                'name': 'Logs Antigos',
-                'icon': '📝',
-                'description': 'Arquivos de log antigos'
             },
             'trash': {
                 'name': 'Lixeira',
                 'icon': '🗑️',
                 'description': 'Arquivos na lixeira do usuário'
             },
-            'old_files': {
-                'name': 'Arquivos Antigos/Backup',
-                'icon': '📦',
-                'description': 'Arquivos .old, .bak, ~backup'
+            'old_logs': {
+                'name': 'Logs Antigos',
+                'icon': '📝',
+                'description': 'Arquivos de log antigos'
             },
             'package_cache': {
-                'name': 'Cache de Pacotes',
+                'name': 'Cache Pacotes',
                 'icon': '📦',
                 'description': 'Cache do apt/dnf/pacman'
+            },
+            'journal': {
+                'name': 'Journal Logs',
+                'icon': '📋',
+                'description': 'Logs do systemd journal'
+            },
+            'crash_reports': {
+                'name': 'Relatórios Crash',
+                'icon': '💥',
+                'description': 'Relatórios de falhas do sistema'
+            },
+            'recent_docs': {
+                'name': 'Docs Recentes',
+                'icon': '📄',
+                'description': 'Histórico de documentos recentes'
             }
         }
         
@@ -129,20 +134,74 @@ class LinuxCleaner:
         """
         scan_methods = {
             'tmp': self._scan_tmp,
-            'var_tmp': self._scan_var_tmp,
             'user_cache': self._scan_user_cache,
             'browser_cache': self._scan_browser_cache,
             'thumbnails': self._scan_thumbnails,
             'old_logs': self._scan_old_logs,
             'trash': self._scan_trash,
-            'old_files': self._scan_old_files,
             'package_cache': self._scan_package_cache,
+            'journal': self._scan_journal,
+            'crash_reports': self._scan_crash_reports,
+            'recent_docs': self._scan_recent_docs,
         }
         
         method = scan_methods.get(category)
         if method:
             return method()
         return [], 0
+    
+    def _scan_journal(self) -> Tuple[List[str], int]:
+        """Escaneia logs do journal do systemd."""
+        files = []
+        total_size = 0
+        journal_dir = Path('/var/log/journal')
+        
+        if journal_dir.exists():
+            try:
+                for f in journal_dir.rglob('*'):
+                    if f.is_file() and self._is_safe_to_delete(f):
+                        size = get_file_size(f)
+                        files.append(str(f))
+                        total_size += size
+            except PermissionError:
+                pass
+        return files, total_size
+    
+    def _scan_crash_reports(self) -> Tuple[List[str], int]:
+        """Escaneia relatórios de crash."""
+        files = []
+        total_size = 0
+        crash_dirs = [
+            Path('/var/crash'),
+            self.user_home / '.local/share/apport',
+        ]
+        
+        for crash_dir in crash_dirs:
+            if crash_dir.exists():
+                try:
+                    for f in crash_dir.rglob('*'):
+                        if f.is_file() and self._is_safe_to_delete(f):
+                            size = get_file_size(f)
+                            files.append(str(f))
+                            total_size += size
+                except PermissionError:
+                    pass
+        return files, total_size
+    
+    def _scan_recent_docs(self) -> Tuple[List[str], int]:
+        """Escaneia histórico de documentos recentes."""
+        files = []
+        total_size = 0
+        recent_files = [
+            self.user_home / '.local/share/recently-used.xbel',
+        ]
+        
+        for f in recent_files:
+            if f.exists() and f.is_file():
+                size = get_file_size(f)
+                files.append(str(f))
+                total_size += size
+        return files, total_size
         
     def _is_safe_to_delete(self, path: Path) -> bool:
         """
