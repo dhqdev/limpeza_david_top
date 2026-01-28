@@ -47,13 +47,15 @@ Abra o **PowerShell como Administrador** e execute:
 irm https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_windows.ps1 | iex
 ```
 
-### 🐧 Linux (Ubuntu/Debian)
+### 🐧 Linux (Ubuntu/Debian/Fedora/Arch/openSUSE)
 
 Abra o **Terminal** e execute:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_linux.sh | bash
 ```
+
+> **📋 O instalador detecta automaticamente** seu gerenciador de pacotes (apt, dnf, pacman, zypper) e instala todas as dependências necessárias.
 
 ---
 

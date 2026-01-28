@@ -1,328 +1,386 @@
 #!/bin/bash
-#
-# Script de instalação do Limpeza David para Linux
-#
-# Este script automatiza a instalação do Limpeza David:
-# - Verifica e instala Git (se necessário)
-# - Verifica e instala Python (se necessário)
-# - Clona o repositório
-# - Instala dependências
-# - Cria atalho na Área de Trabalho
-#
-# Uso:
-#   curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_linux.sh | bash
-#
+# ============================================================================
+# LIMPEZA DAVID - Instalador Universal para Linux
+# ============================================================================
 # Autor: David Fernandes
-# Versão: 1.0.0
+# Versão: 2.0.0
+# 
+# Este script automatiza a instalação completa do Limpeza David:
+# - Detecta o gerenciador de pacotes (apt, dnf, pacman, zypper)
+# - Verifica e instala todas as dependências (Git, Python, pip, Tkinter)
+# - Clona o repositório
+# - Instala dependências Python
+# - Cria atalho funcional na Área de Trabalho
+#
+# USO:
+# curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_linux.sh | bash
+# ============================================================================
 
 set -e
 
 # === CONFIGURAÇÕES ===
 REPO_URL="https://github.com/dhqdev/limpeza_david.git"
-APP_NAME="Limpeza David"
+APP_NAME="limpeza_david"
 INSTALL_DIR="$HOME/.local/share/limpeza_david"
 BIN_DIR="$HOME/.local/bin"
-DESKTOP_DIR="$HOME/Desktop"
-APPLICATIONS_DIR="$HOME/.local/share/applications"
+SCRIPT_PATH="$BIN_DIR/limpeza-david"
 
-# Cores
+# Detectar Área de Trabalho (suporte a vários idiomas)
+detect_desktop_dir() {
+    # Tenta usar xdg-user-dir primeiro
+    if command -v xdg-user-dir &> /dev/null; then
+        DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null)
+        if [[ -n "$DESKTOP_DIR" && -d "$DESKTOP_DIR" ]]; then
+            echo "$DESKTOP_DIR"
+            return
+        fi
+    fi
+    
+    # Lista de possíveis nomes para a área de trabalho
+    local desktop_names=("Desktop" "Área de trabalho" "Área de Trabalho" "Escritorio" "Bureau")
+    
+    for name in "${desktop_names[@]}"; do
+        if [[ -d "$HOME/$name" ]]; then
+            echo "$HOME/$name"
+            return
+        fi
+    done
+    
+    # Fallback: cria Desktop
+    mkdir -p "$HOME/Desktop"
+    echo "$HOME/Desktop"
+}
+
+DESKTOP_DIR=$(detect_desktop_dir)
+DESKTOP_FILE="$DESKTOP_DIR/${APP_NAME}.desktop"
+
+# === CORES ===
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
+MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# === FUNÇÕES UTILITÁRIAS ===
-
+# === FUNÇÕES AUXILIARES ===
 print_banner() {
     echo ""
-    echo -e "${PURPLE}${BOLD}"
-    echo "╔═══════════════════════════════════════════════════════╗"
-    echo "║                                                       ║"
-    echo "║   🧹  LIMPEZA DAVID - Instalador Linux  🧹            ║"
-    echo "║                                                       ║"
-    echo "║   Versão 1.0.0 | Open Source                          ║"
-    echo "║                                                       ║"
-    echo "╚═══════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
+    echo -e "${MAGENTA}╔═══════════════════════════════════════════════════════╗${NC}"
+    echo -e "${MAGENTA}║                                                       ║${NC}"
+    echo -e "${MAGENTA}║   🧹  LIMPEZA DAVID - Instalador Linux  🧹            ║${NC}"
+    echo -e "${MAGENTA}║                                                       ║${NC}"
+    echo -e "${MAGENTA}║   Versão 2.0.0 | Open Source                          ║${NC}"
+    echo -e "${MAGENTA}║                                                       ║${NC}"
+    echo -e "${MAGENTA}╚═══════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 
-print_info() {
+log_info() {
     echo -e "${CYAN}ℹ️  $1${NC}"
 }
 
-print_success() {
+log_success() {
     echo -e "${GREEN}✅ $1${NC}"
 }
 
-print_warning() {
+log_warning() {
     echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
-print_error() {
+log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-print_step() {
-    echo -e "${BLUE}${BOLD}➤ $1${NC}"
+log_step() {
+    echo -e "\n${BLUE}➤ $1${NC}"
 }
 
-# Detecta o gerenciador de pacotes
+# === DETECÇÃO DO GERENCIADOR DE PACOTES ===
 detect_package_manager() {
     if command -v apt &> /dev/null; then
         PKG_MANAGER="apt"
-        PKG_INSTALL="sudo apt install -y"
         PKG_UPDATE="sudo apt update"
+        PKG_INSTALL="sudo apt install -y"
+        PYTHON_PKG="python3"
+        PYTHON_PIP_PKG="python3-pip"
+        PYTHON_VENV_PKG="python3-venv"
+        TKINTER_PKG="python3-tk"
+        GIT_PKG="git"
     elif command -v dnf &> /dev/null; then
         PKG_MANAGER="dnf"
-        PKG_INSTALL="sudo dnf install -y"
         PKG_UPDATE="sudo dnf check-update || true"
-    elif command -v yum &> /dev/null; then
-        PKG_MANAGER="yum"
-        PKG_INSTALL="sudo yum install -y"
-        PKG_UPDATE="sudo yum check-update || true"
+        PKG_INSTALL="sudo dnf install -y"
+        PYTHON_PKG="python3"
+        PYTHON_PIP_PKG="python3-pip"
+        PYTHON_VENV_PKG="python3-virtualenv"
+        TKINTER_PKG="python3-tkinter"
+        GIT_PKG="git"
     elif command -v pacman &> /dev/null; then
         PKG_MANAGER="pacman"
-        PKG_INSTALL="sudo pacman -S --noconfirm"
         PKG_UPDATE="sudo pacman -Sy"
+        PKG_INSTALL="sudo pacman -S --noconfirm"
+        PYTHON_PKG="python"
+        PYTHON_PIP_PKG="python-pip"
+        PYTHON_VENV_PKG="python-virtualenv"
+        TKINTER_PKG="tk"
+        GIT_PKG="git"
     elif command -v zypper &> /dev/null; then
         PKG_MANAGER="zypper"
-        PKG_INSTALL="sudo zypper install -y"
         PKG_UPDATE="sudo zypper refresh"
+        PKG_INSTALL="sudo zypper install -y"
+        PYTHON_PKG="python3"
+        PYTHON_PIP_PKG="python3-pip"
+        PYTHON_VENV_PKG="python3-virtualenv"
+        TKINTER_PKG="python3-tk"
+        GIT_PKG="git"
+    elif command -v apk &> /dev/null; then
+        PKG_MANAGER="apk"
+        PKG_UPDATE="sudo apk update"
+        PKG_INSTALL="sudo apk add"
+        PYTHON_PKG="python3"
+        PYTHON_PIP_PKG="py3-pip"
+        PYTHON_VENV_PKG="python3-dev"
+        TKINTER_PKG="py3-tkinter"
+        GIT_PKG="git"
     else
-        print_error "Gerenciador de pacotes não suportado!"
+        log_error "Gerenciador de pacotes não suportado!"
+        log_info "Suportados: apt (Debian/Ubuntu), dnf (Fedora), pacman (Arch), zypper (openSUSE), apk (Alpine)"
         exit 1
     fi
     
-    print_info "Gerenciador de pacotes detectado: $PKG_MANAGER"
+    log_info "Gerenciador de pacotes detectado: ${BOLD}$PKG_MANAGER${NC}"
 }
 
-# Instala Git
-install_git() {
-    print_step "Verificando Git..."
+# === VERIFICAÇÃO E INSTALAÇÃO DE DEPENDÊNCIAS ===
+check_and_install_git() {
+    log_step "Verificando Git..."
     
     if command -v git &> /dev/null; then
-        GIT_VERSION=$(git --version)
-        print_success "Git já está instalado: $GIT_VERSION"
-        return 0
-    fi
-    
-    print_info "Instalando Git..."
-    
-    case $PKG_MANAGER in
-        apt)
-            $PKG_UPDATE
-            $PKG_INSTALL git
-            ;;
-        dnf|yum)
-            $PKG_INSTALL git
-            ;;
-        pacman)
-            $PKG_INSTALL git
-            ;;
-        zypper)
-            $PKG_INSTALL git
-            ;;
-    esac
-    
-    if command -v git &> /dev/null; then
-        print_success "Git instalado com sucesso"
-        return 0
+        log_success "Git já está instalado: $(git --version)"
     else
-        print_error "Falha ao instalar Git"
-        return 1
+        log_warning "Git não encontrado. Instalando..."
+        $PKG_UPDATE
+        $PKG_INSTALL $GIT_PKG
+        
+        if command -v git &> /dev/null; then
+            log_success "Git instalado com sucesso: $(git --version)"
+        else
+            log_error "Falha ao instalar Git"
+            exit 1
+        fi
     fi
 }
 
-# Instala Python
-install_python() {
-    print_step "Verificando Python..."
+check_and_install_python() {
+    log_step "Verificando Python..."
     
-    # Verifica python3
+    # Procura por python3 primeiro, depois python
+    PYTHON_CMD=""
+    
     if command -v python3 &> /dev/null; then
-        PYTHON_VERSION=$(python3 --version)
-        print_success "Python já está instalado: $PYTHON_VERSION"
         PYTHON_CMD="python3"
-        return 0
-    fi
-    
-    # Verifica python
-    if command -v python &> /dev/null; then
-        PYTHON_VERSION=$(python --version 2>&1)
-        if [[ $PYTHON_VERSION == *"Python 3"* ]]; then
-            print_success "Python já está instalado: $PYTHON_VERSION"
+    elif command -v python &> /dev/null; then
+        # Verifica se é Python 3
+        if python --version 2>&1 | grep -q "Python 3"; then
             PYTHON_CMD="python"
-            return 0
         fi
     fi
     
-    print_info "Instalando Python 3..."
-    
-    case $PKG_MANAGER in
-        apt)
-            $PKG_UPDATE
-            $PKG_INSTALL python3 python3-pip python3-venv python3-tk
-            ;;
-        dnf|yum)
-            $PKG_INSTALL python3 python3-pip python3-tkinter
-            ;;
-        pacman)
-            $PKG_INSTALL python python-pip tk
-            ;;
-        zypper)
-            $PKG_INSTALL python3 python3-pip python3-tk
-            ;;
-    esac
-    
-    if command -v python3 &> /dev/null; then
-        print_success "Python instalado com sucesso"
-        PYTHON_CMD="python3"
-        return 0
+    if [[ -n "$PYTHON_CMD" ]]; then
+        PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+        log_success "Python já está instalado: $PYTHON_VERSION"
     else
-        print_error "Falha ao instalar Python"
-        return 1
+        log_warning "Python 3 não encontrado. Instalando..."
+        $PKG_UPDATE
+        $PKG_INSTALL $PYTHON_PKG
+        
+        if command -v python3 &> /dev/null; then
+            PYTHON_CMD="python3"
+            log_success "Python instalado com sucesso: $(python3 --version)"
+        else
+            log_error "Falha ao instalar Python"
+            exit 1
+        fi
     fi
 }
 
-# Instala dependências do sistema para Tkinter
-install_tkinter() {
-    print_step "Verificando Tkinter..."
+check_and_install_pip() {
+    log_step "Verificando pip..."
     
-    # Testa se tkinter está disponível
-    if $PYTHON_CMD -c "import tkinter" 2>/dev/null; then
-        print_success "Tkinter já está instalado"
-        return 0
+    # Tenta diferentes formas de verificar o pip
+    PIP_INSTALLED=false
+    
+    if $PYTHON_CMD -m pip --version &> /dev/null; then
+        PIP_INSTALLED=true
+        PIP_VERSION=$($PYTHON_CMD -m pip --version 2>&1)
+        log_success "pip já está instalado: $PIP_VERSION"
+    elif command -v pip3 &> /dev/null; then
+        PIP_INSTALLED=true
+        log_success "pip3 já está instalado: $(pip3 --version)"
+    elif command -v pip &> /dev/null; then
+        PIP_INSTALLED=true
+        log_success "pip já está instalado: $(pip --version)"
     fi
     
-    print_info "Instalando Tkinter..."
-    
-    case $PKG_MANAGER in
-        apt)
-            $PKG_INSTALL python3-tk
-            ;;
-        dnf|yum)
-            $PKG_INSTALL python3-tkinter
-            ;;
-        pacman)
-            $PKG_INSTALL tk
-            ;;
-        zypper)
-            $PKG_INSTALL python3-tk
-            ;;
-    esac
-    
-    if $PYTHON_CMD -c "import tkinter" 2>/dev/null; then
-        print_success "Tkinter instalado com sucesso"
-        return 0
-    else
-        print_warning "Tkinter pode não estar disponível - a GUI pode não funcionar"
-        return 0
+    if [[ "$PIP_INSTALLED" == "false" ]]; then
+        log_warning "pip não encontrado. Instalando..."
+        
+        # Tenta instalar via pacote do sistema primeiro
+        $PKG_INSTALL $PYTHON_PIP_PKG 2>/dev/null || true
+        
+        # Se ainda não funcionar, tenta ensurepip
+        if ! $PYTHON_CMD -m pip --version &> /dev/null; then
+            log_info "Tentando instalar pip via ensurepip..."
+            $PYTHON_CMD -m ensurepip --upgrade 2>/dev/null || true
+        fi
+        
+        # Se ainda não funcionar, tenta get-pip.py
+        if ! $PYTHON_CMD -m pip --version &> /dev/null; then
+            log_info "Tentando instalar pip via get-pip.py..."
+            curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+            $PYTHON_CMD /tmp/get-pip.py --user
+            rm -f /tmp/get-pip.py
+            
+            # Adiciona o diretório local ao PATH
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
+        
+        # Verifica se funcionou
+        if $PYTHON_CMD -m pip --version &> /dev/null; then
+            log_success "pip instalado com sucesso: $($PYTHON_CMD -m pip --version)"
+        else
+            log_warning "pip não pôde ser instalado automaticamente"
+            log_info "Você pode precisar instalar manualmente: $PKG_INSTALL $PYTHON_PIP_PKG"
+        fi
     fi
 }
 
-# Clona o repositório
+check_and_install_tkinter() {
+    log_step "Verificando Tkinter..."
+    
+    if $PYTHON_CMD -c "import tkinter" &> /dev/null; then
+        log_success "Tkinter já está instalado"
+    else
+        log_warning "Tkinter não encontrado. Instalando..."
+        $PKG_INSTALL $TKINTER_PKG
+        
+        if $PYTHON_CMD -c "import tkinter" &> /dev/null; then
+            log_success "Tkinter instalado com sucesso"
+        else
+            log_error "Falha ao instalar Tkinter"
+            log_info "Tente manualmente: $PKG_INSTALL $TKINTER_PKG"
+            exit 1
+        fi
+    fi
+}
+
+# === CLONAGEM DO REPOSITÓRIO ===
 clone_repository() {
-    print_step "Preparando diretório de instalação..."
+    log_step "Preparando diretório de instalação..."
     
     # Remove instalação anterior se existir
-    if [ -d "$INSTALL_DIR" ]; then
-        print_info "Removendo instalação anterior..."
+    if [[ -d "$INSTALL_DIR" ]]; then
+        log_info "Removendo instalação anterior..."
         rm -rf "$INSTALL_DIR"
     fi
     
     # Cria diretório pai
     mkdir -p "$(dirname "$INSTALL_DIR")"
     
-    print_info "Baixando Limpeza David..."
+    log_info "Baixando Limpeza David..."
     
     if git clone "$REPO_URL" "$INSTALL_DIR"; then
-        print_success "Repositório clonado com sucesso"
-        return 0
+        log_success "Repositório clonado com sucesso"
     else
-        print_error "Falha ao clonar repositório"
-        return 1
+        log_error "Falha ao clonar repositório"
+        exit 1
     fi
 }
 
-# Instala dependências Python
-install_dependencies() {
-    print_step "Instalando dependências Python..."
+# === INSTALAÇÃO DE DEPENDÊNCIAS PYTHON ===
+install_python_dependencies() {
+    log_step "Instalando dependências Python..."
     
     cd "$INSTALL_DIR"
     
-    # Atualiza pip
-    $PYTHON_CMD -m pip install --user --upgrade pip
-    
-    # Instala dependências
-    if [ -f "requirements.txt" ]; then
-        $PYTHON_CMD -m pip install --user -r requirements.txt
+    # Verifica se requirements.txt existe
+    if [[ -f "requirements.txt" ]]; then
+        # Tenta instalar via pip
+        if $PYTHON_CMD -m pip --version &> /dev/null; then
+            $PYTHON_CMD -m pip install --user -r requirements.txt 2>/dev/null || true
+        elif command -v pip3 &> /dev/null; then
+            pip3 install --user -r requirements.txt 2>/dev/null || true
+        fi
     fi
     
-    print_success "Dependências instaladas"
-    return 0
+    log_success "Dependências instaladas"
 }
 
-# Cria script de lançamento
-create_launcher() {
-    print_step "Criando script de lançamento..."
+# === CRIAÇÃO DO SCRIPT DE LANÇAMENTO ===
+create_launcher_script() {
+    log_step "Criando script de lançamento..."
     
     # Cria diretório bin se não existir
     mkdir -p "$BIN_DIR"
     
-    # Cria o script
-    cat > "$BIN_DIR/limpeza-david" << EOF
+    # Cria o script de lançamento
+    cat > "$SCRIPT_PATH" << EOF
 #!/bin/bash
 # Lançador do Limpeza David
 cd "$INSTALL_DIR"
-$PYTHON_CMD app/main.py "\$@"
+exec $PYTHON_CMD "$INSTALL_DIR/run.py" "\$@"
 EOF
     
-    chmod +x "$BIN_DIR/limpeza-david"
+    chmod +x "$SCRIPT_PATH"
+    
+    log_success "Script de lançamento criado: $SCRIPT_PATH"
     
     # Adiciona ao PATH se necessário
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-        echo "" >> "$HOME/.bashrc"
-        echo "# Limpeza David" >> "$HOME/.bashrc"
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        log_info "Adicionando $BIN_DIR ao PATH..."
         
-        # Também para zsh se existir
-        if [ -f "$HOME/.zshrc" ]; then
-            echo "" >> "$HOME/.zshrc"
-            echo "# Limpeza David" >> "$HOME/.zshrc"
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+        # Detecta o shell e adiciona ao arquivo de configuração apropriado
+        SHELL_RC=""
+        if [[ -n "$BASH_VERSION" ]]; then
+            SHELL_RC="$HOME/.bashrc"
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            SHELL_RC="$HOME/.zshrc"
+        fi
+        
+        if [[ -n "$SHELL_RC" && -f "$SHELL_RC" ]]; then
+            if ! grep -q "export PATH=\"\$HOME/.local/bin:\$PATH\"" "$SHELL_RC"; then
+                echo "" >> "$SHELL_RC"
+                echo "# Adicionado pelo instalador do Limpeza David" >> "$SHELL_RC"
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC"
+                log_info "PATH atualizado em $SHELL_RC"
+            fi
         fi
     fi
-    
-    print_success "Script de lançamento criado: $BIN_DIR/limpeza-david"
-    return 0
 }
 
-# Cria atalho .desktop
-create_desktop_entry() {
-    print_step "Criando atalho na Área de Trabalho..."
+# === CRIAÇÃO DO ATALHO NA ÁREA DE TRABALHO ===
+create_desktop_shortcut() {
+    log_step "Criando atalho na Área de Trabalho..."
     
-    # Encontra o caminho do ícone
+    # Define o caminho do ícone
     ICON_PATH="$INSTALL_DIR/assets/icon.png"
-    if [ ! -f "$ICON_PATH" ]; then
-        ICON_PATH="utilities-system-monitor"  # Ícone padrão do sistema
+    
+    # Usa um ícone padrão se o custom não existir
+    if [[ ! -f "$ICON_PATH" ]]; then
+        ICON_PATH="utilities-system-monitor"
     fi
     
-    # Cria diretório de aplicações
-    mkdir -p "$APPLICATIONS_DIR"
-    
-    # Cria arquivo .desktop para o menu de aplicações
-    cat > "$APPLICATIONS_DIR/limpeza_david.desktop" << EOF
+    # Cria o arquivo .desktop
+    cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=limpeza_david
+Name=Limpeza David
 GenericName=Limpador de Sistema
 Comment=Ferramenta de limpeza de sistema - Remove arquivos temporários, cache e lixo
-Exec=$PYTHON_CMD $INSTALL_DIR/app/main.py
+Exec=$PYTHON_CMD $INSTALL_DIR/run.py
 Icon=$ICON_PATH
 Terminal=false
 Categories=Utility;System;
@@ -331,168 +389,133 @@ StartupNotify=true
 StartupWMClass=limpeza_david
 EOF
     
-    chmod +x "$APPLICATIONS_DIR/limpeza_david.desktop"
+    # IMPORTANTE: Torna o arquivo .desktop executável
+    chmod +x "$DESKTOP_FILE"
     
-    # Cria também na Área de Trabalho
-    # Tenta encontrar a pasta Desktop (pode variar por idioma)
-    DESKTOP_PATHS=(
-        "$HOME/Desktop"
-        "$HOME/Área de trabalho"
-        "$HOME/Área de Trabalho"
-        "$HOME/Escritorio"
-        "$HOME/Bureau"
-    )
+    # Marca como confiável no GNOME (necessário para alguns sistemas)
+    if command -v gio &> /dev/null; then
+        gio set "$DESKTOP_FILE" metadata::trusted true 2>/dev/null || true
+    fi
     
-    for DESKTOP_PATH in "${DESKTOP_PATHS[@]}"; do
-        if [ -d "$DESKTOP_PATH" ]; then
-            cp "$APPLICATIONS_DIR/limpeza_david.desktop" "$DESKTOP_PATH/limpeza_david.desktop"
-            chmod +x "$DESKTOP_PATH/limpeza_david.desktop"
-            
-            # Marca como confiável (para GNOME) - permite executar sem perguntar
-            if command -v gio &> /dev/null; then
-                gio set "$DESKTOP_PATH/limpeza_david.desktop" metadata::trusted true 2>/dev/null || true
-            fi
-            
-            # Para KDE/outros DEs
-            chmod a+x "$DESKTOP_PATH/limpeza_david.desktop"
-            
-            print_success "Atalho criado em: $DESKTOP_PATH/limpeza_david.desktop"
-            break
-        fi
-    done
+    # Também copia para applications (menu do sistema)
+    APPLICATIONS_DIR="$HOME/.local/share/applications"
+    mkdir -p "$APPLICATIONS_DIR"
+    cp "$DESKTOP_FILE" "$APPLICATIONS_DIR/${APP_NAME}.desktop"
+    chmod +x "$APPLICATIONS_DIR/${APP_NAME}.desktop"
     
-    # Atualiza o cache de aplicações
+    # Atualiza o cache do desktop database
     if command -v update-desktop-database &> /dev/null; then
         update-desktop-database "$APPLICATIONS_DIR" 2>/dev/null || true
     fi
     
-    return 0
+    log_success "Atalho criado em: $DESKTOP_FILE"
+    log_success "Também disponível no menu de aplicativos"
 }
 
-# Constrói executável (opcional)
-build_executable() {
-    print_step "Construindo executável (opcional)..."
+# === VERIFICAÇÃO FINAL ===
+verify_installation() {
+    log_step "Verificando instalação..."
     
-    # Verifica se PyInstaller está disponível
-    if ! $PYTHON_CMD -c "import PyInstaller" 2>/dev/null; then
-        print_info "Instalando PyInstaller..."
-        $PYTHON_CMD -m pip install --user pyinstaller
+    ERRORS=0
+    
+    # Verifica se o diretório de instalação existe
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        log_error "Diretório de instalação não encontrado"
+        ((ERRORS++))
     fi
     
-    cd "$INSTALL_DIR"
-    
-    # Constrói o executável
-    ICON_ARG=""
-    if [ -f "$INSTALL_DIR/assets/icon.png" ]; then
-        ICON_ARG="--icon=assets/icon.png"
+    # Verifica se o arquivo principal existe
+    if [[ ! -f "$INSTALL_DIR/run.py" ]]; then
+        log_error "Arquivo principal (run.py) não encontrado"
+        ((ERRORS++))
     fi
     
-    $PYTHON_CMD -m PyInstaller --noconfirm --onefile \
-        --name "limpeza-david" \
-        --add-data "assets:assets" \
-        $ICON_ARG \
-        app/main.py
+    # Verifica se o script de lançamento existe
+    if [[ ! -f "$SCRIPT_PATH" ]]; then
+        log_error "Script de lançamento não encontrado"
+        ((ERRORS++))
+    fi
     
-    if [ -f "$INSTALL_DIR/dist/limpeza-david" ]; then
-        mv "$INSTALL_DIR/dist/limpeza-david" "$BIN_DIR/"
-        chmod +x "$BIN_DIR/limpeza-david"
-        print_success "Executável criado: $BIN_DIR/limpeza-david"
+    # Verifica se o atalho existe
+    if [[ ! -f "$DESKTOP_FILE" ]]; then
+        log_error "Atalho na área de trabalho não encontrado"
+        ((ERRORS++))
+    fi
+    
+    # Tenta executar uma verificação rápida do Python
+    if ! $PYTHON_CMD -c "import tkinter" &> /dev/null; then
+        log_error "Tkinter não está funcionando corretamente"
+        ((ERRORS++))
+    fi
+    
+    if [[ $ERRORS -eq 0 ]]; then
+        log_success "Instalação verificada com sucesso!"
         return 0
     else
-        print_warning "Não foi possível criar o executável"
+        log_error "Instalação com $ERRORS erro(s)"
         return 1
     fi
 }
 
-# === MAIN ===
-
+# === FUNÇÃO PRINCIPAL ===
 main() {
-    clear
     print_banner
     
-    # Detecta gerenciador de pacotes
+    # Detecta o gerenciador de pacotes
     detect_package_manager
+    
+    log_info "🚀 Iniciando instalação do Limpeza David..."
+    log_info "📂 Área de trabalho detectada: $DESKTOP_DIR"
+    
+    # Verifica e instala dependências
+    check_and_install_git
+    check_and_install_python
+    check_and_install_pip
+    check_and_install_tkinter
+    
+    # Clona o repositório
+    clone_repository
+    
+    # Instala dependências Python
+    install_python_dependencies
+    
+    # Cria script de lançamento
+    create_launcher_script
+    
+    # Cria atalho na área de trabalho
+    create_desktop_shortcut
+    
+    # Verifica instalação
+    verify_installation
+    
+    # Mensagem final
+    echo ""
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                                                       ║${NC}"
+    echo -e "${GREEN}║   🎉  INSTALAÇÃO CONCLUÍDA COM SUCESSO!  🎉           ║${NC}"
+    echo -e "${GREEN}║                                                       ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}Para executar o Limpeza David:${NC}"
+    echo -e "  ${BOLD}1.${NC} Clique no atalho '${BOLD}Limpeza David${NC}' na área de trabalho"
+    echo -e "  ${BOLD}2.${NC} Ou execute no terminal: ${BOLD}limpeza-david${NC}"
+    echo -e "  ${BOLD}3.${NC} Ou execute: ${BOLD}$PYTHON_CMD $INSTALL_DIR/run.py${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠️  Se o atalho não funcionar na primeira vez:${NC}"
+    echo -e "    Clique com botão direito > Permitir execução"
+    echo -e "    Ou execute: ${BOLD}chmod +x \"$DESKTOP_FILE\"${NC}"
     echo ""
     
-    # Define comando Python padrão
-    PYTHON_CMD="python3"
-    
-    print_info "🚀 Iniciando instalação do Limpeza David..."
+    # Pergunta se deseja executar agora
+    read -p "Deseja executar o Limpeza David agora? (s/N) " -n 1 -r
     echo ""
-    
-    # Etapa 1: Instalar Git
-    if ! install_git; then
-        print_error "Falha ao instalar Git. Abortando."
-        exit 1
-    fi
-    echo ""
-    
-    # Etapa 2: Instalar Python
-    if ! install_python; then
-        print_error "Falha ao instalar Python. Abortando."
-        exit 1
-    fi
-    echo ""
-    
-    # Etapa 3: Instalar Tkinter
-    install_tkinter
-    echo ""
-    
-    # Etapa 4: Clonar repositório
-    if ! clone_repository; then
-        print_error "Falha ao baixar o projeto. Abortando."
-        exit 1
-    fi
-    echo ""
-    
-    # Etapa 5: Instalar dependências
-    if ! install_dependencies; then
-        print_error "Falha ao instalar dependências. Abortando."
-        exit 1
-    fi
-    echo ""
-    
-    # Etapa 6: Criar launcher
-    create_launcher
-    echo ""
-    
-    # Etapa 7: Criar atalho
-    create_desktop_entry
-    echo ""
-    
-    # Etapa 8 (Opcional): Criar executável
-    echo -e "${YELLOW}❓ Deseja criar um executável? (pode demorar alguns minutos)${NC}"
-    read -p "   Digite 's' para sim ou 'n' para não: " CREATE_EXE
-    
-    if [[ "$CREATE_EXE" == "s" || "$CREATE_EXE" == "S" ]]; then
-        build_executable || true
-    fi
-    
-    # Conclusão
-    echo ""
-    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-    print_success "INSTALAÇÃO CONCLUÍDA COM SUCESSO!"
-    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-    echo ""
-    print_info "📂 Instalado em: $INSTALL_DIR"
-    print_info "🖥️  Atalho criado na Área de Trabalho e menu de aplicações"
-    echo ""
-    echo -e "${YELLOW}🚀 Para iniciar o Limpeza David:${NC}"
-    echo "   - Clique no atalho na Área de Trabalho"
-    echo "   - Ou execute: limpeza-david"
-    echo "   - Ou execute: $PYTHON_CMD $INSTALL_DIR/app/main.py"
-    echo ""
-    
-    # Pergunta se quer iniciar agora
-    echo -e "${YELLOW}❓ Deseja iniciar o Limpeza David agora? (s/n)${NC}"
-    read -p "   " START_NOW
-    
-    if [[ "$START_NOW" == "s" || "$START_NOW" == "S" ]]; then
-        print_success "🚀 Iniciando Limpeza David..."
+    if [[ $REPLY =~ ^[Ss]$ ]]; then
+        log_info "Iniciando Limpeza David..."
         cd "$INSTALL_DIR"
-        $PYTHON_CMD app/main.py &
+        $PYTHON_CMD "$INSTALL_DIR/run.py" &
+        disown
     fi
 }
 
-# Executa
-main
+# Executa o script principal
+main "$@"
