@@ -48,7 +48,7 @@ Com apenas um comando, você pode instalar e executar a ferramenta em qualquer m
 Abra o **PowerShell como Administrador** e execute:
 
 ```powershell
-irm https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_windows.ps1 | iex
+irm https://raw.githubusercontent.com/dhqdev/limpeza_david_top/main/installer/install_windows.ps1 | iex
 ```
 
 ### 🐧 Linux (Ubuntu/Debian/Fedora/Arch/openSUSE)
@@ -56,7 +56,7 @@ irm https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/instal
 Abra o **Terminal** e execute:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david/main/installer/install_linux.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dhqdev/limpeza_david_top/main/installer/install_linux.sh | bash
 ```
 
 > **📋 O instalador detecta automaticamente** seu gerenciador de pacotes (apt, dnf, pacman, zypper) e instala todas as dependências necessárias.
