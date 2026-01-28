@@ -39,12 +39,12 @@ class LimpezaDavidApp:
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("🧹 Limpeza David - Limpador de Sistema")
+        self.root.title("Limpeza David - Limpador de Sistema")
         self.root.geometry("800x600")
         self.root.minsize(700, 500)
         
-        # Configurar ícone se existir
-        self._set_icon()
+        # Configurar ícone se existir (desabilitado por padrão - pode causar erro com ícones grandes)
+        # self._set_icon()
         
         # Inicializa o cleaner
         self.cleaner = SystemCleaner()
